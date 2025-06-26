@@ -1,12 +1,11 @@
 // Views/ConsoleHandler.cs
 using System;
-using System.Collections.Generic; // Para List<T>
-using System.Linq; // Necessário para o método .Any()
+using System.Collections.Generic;
+using System.Linq;
 
-// AQUI: Este using deve apontar para o seu Models e estar com os outros usings
-using MeuJogoMascote.Models; // Corrigido para 'MeuJogoMascote.Models'
+using MeuJogoMascote.Models; // Para poder usar as classes Mascote, PokemonListItem etc.
 
-namespace MeuJogoMascote.Views // AQUI: Namespace DEVE ser 'MeuJogoMascote.Views'
+namespace MeuJogoMascote.Views
 {
     public class ConsoleHandler
     {
@@ -23,13 +22,25 @@ namespace MeuJogoMascote.Views // AQUI: Namespace DEVE ser 'MeuJogoMascote.Views
             Console.Clear();
         }
 
+        // Mantenha esta aqui para o menu principal
         public void ExibirMenuPrincipalOpcoes()
         {
             Console.WriteLine("\n--- MENU PRINCIPAL ---");
             Console.WriteLine("1. Adoção de Mascotes");
-            Console.WriteLine("2. Ver Mascotes Adotados (em breve!)");
+            Console.WriteLine("2. Interagir com Mascote"); // NOVIDADE DO DIA 5: Nova opção
             Console.WriteLine("3. Sair do Jogo");
             Console.Write("Escolha uma opção: ");
+        }
+
+        // NOVO MÉTODO PARA EXIBIR O STATUS DO MASCOTE (DIA 5)
+        public void ExibirStatusMascote(Mascote mascote)
+        {
+            Console.WriteLine($"\n--- Status de {mascote.Name.ToUpper()} ---");
+            Console.WriteLine($"  Alimentação: {mascote.Alimentacao}/10");
+            Console.WriteLine($"  Humor:       {mascote.Humor}/10");
+            Console.WriteLine($"  Sono:        {mascote.Sono}/10");
+            Console.WriteLine($"  Status:      {(mascote.EstaDormindo ? "Dormindo 😴" : "Acordado 😊")}");
+            Console.WriteLine("----------------------------------");
         }
 
         public void ExibirMensagem(string mensagem)
@@ -58,6 +69,9 @@ namespace MeuJogoMascote.Views // AQUI: Namespace DEVE ser 'MeuJogoMascote.Views
             Console.WriteLine($"Altura: {mascote.Height} decimetros");
             Console.WriteLine($"Peso: {mascote.Weight} hectogramas");
             Console.WriteLine($"Experiência Base: {mascote.BaseExperience}");
+
+            // NOVIDADE DO DIA 5: Exibir as necessidades iniciais na tela de detalhes
+            ExibirStatusMascote(mascote); // Reutiliza o método para mostrar status
 
             Console.WriteLine("\n--- Habilidades ---");
             if (mascote.Abilities != null && mascote.Abilities.Any())
