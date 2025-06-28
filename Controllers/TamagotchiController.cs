@@ -6,6 +6,10 @@ using System.Text.Json;
 using System.Linq;
 using System.Collections.Generic;
 
+// >>> ESSAS DUAS LINHAS ESTÃO CORRETAS E JÁ FORAM ADICIONADAS
+using AutoMapper; // Permite usar a biblioteca AutoMapper
+using MeuJogoMascote.Configs; // Permite usar seu MappingProfile
+
 using MeuJogoMascote.Models;
 using MeuJogoMascote.Views;
 
@@ -19,10 +23,18 @@ namespace MeuJogoMascote.Controllers
 
         // Mascote adotado que persistirá durante a sessão de jogo
         private Mascote _mascoteAdotado;
+        private readonly IMapper _mapper; // >>> ESTA LINHA ESTÁ CORRETA E NO LUGAR CERTO
 
         public TamagotchiController(ConsoleHandler view)
         {
             _view = view;
+            // >>> AS LINHAS ABAIXO FORAM MOVIDAS PARA DENTRO DO CONSTRUTOR.
+            // É AQUI QUE O AUTOMAPPER DEVE SER CONFIGURADO QUANDO O CONTROLADOR É CRIADO.
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile(new MappingProfile()); // Adiciona o seu MappingProfile
+            });
+            _mapper = mapperConfig.CreateMapper(); // Atribui a configuração à sua ferramenta _mapper
         }
 
         public async Task Jogar()
@@ -71,9 +83,6 @@ namespace MeuJogoMascote.Controllers
                 {
                     _view.ExibirMensagem("Entrada inválida. Por favor, digite um número.");
                 }
-                // Esta linha pode ser removida ou ter um Console.ReadKey() condicional
-                // para não pausar o jogo após sair do menu principal.
-                // Mas, para o fluxo atual, ela garante que o usuário veja as mensagens antes de limpar a tela.
                 _view.ExibirMensagem("\nPressione qualquer tecla para voltar ao menu principal...");
                 Console.ReadKey();
                 _view.LimparTela();
@@ -91,7 +100,7 @@ namespace MeuJogoMascote.Controllers
             {
                 var responseLista = await _httpClient.GetAsync("https://pokeapi.co/api/v2/pokemon/?limit=20");
                 responseLista.EnsureSuccessStatusCode();
-                string jsonListaPokemons = await responseLista.Content.ReadAsStringAsync(); // CORRIGIDO: ReadAsStringAsync
+                string jsonListaPokemons = await responseLista.Content.ReadAsStringAsync();
 
                 pokemonList = JsonSerializer.Deserialize<PokemonListResponse>(jsonListaPokemons);
 
@@ -139,13 +148,18 @@ namespace MeuJogoMascote.Controllers
                     _view.ExibirMensagem($"Buscando detalhes de {escolhaPokemon}...");
                     var responseEspecifico = await _httpClient.GetAsync($"https://pokeapi.co/api/v2/pokemon/{escolhaPokemon}/");
                     responseEspecifico.EnsureSuccessStatusCode();
-                    string jsonPokemonEspecifico = await responseEspecifico.Content.ReadAsStringAsync(); // CORRIGIDO: ReadAsStringAsync
+                    string jsonPokemonEspecifico = await responseEspecifico.Content.ReadAsStringAsync();
 
-                    mascoteTemporario = JsonSerializer.Deserialize<Mascote>(jsonPokemonEspecifico);
+                    // >>> AQUI ESTÁ A MUDANÇA MAIS IMPORTANTE PARA O AUTOMAPPER:
+                    // 1. Deserializa para PokemonApiDto (o que vem da API)
+                    var pokemonApiDto = JsonSerializer.Deserialize<PokemonApiDto>(jsonPokemonEspecifico);
 
-                    if (mascoteTemporario != null)
+                    if (pokemonApiDto != null)
                     {
-                        // Inicializar as necessidades do mascote com valores randômicos
+                        // 2. Mapeia de PokemonApiDto para Mascote usando o AutoMapper
+                        mascoteTemporario = _mapper.Map<Mascote>(pokemonApiDto);
+
+                        // 3. Inicializa as necessidades do mascote com valores randômicos (não vêm da API, são do seu jogo)
                         mascoteTemporario.Alimentacao = _random.Next(5, 11);
                         mascoteTemporario.Humor = _random.Next(5, 11);
                         mascoteTemporario.Sono = _random.Next(5, 11);
@@ -169,9 +183,9 @@ namespace MeuJogoMascote.Controllers
                             _view.ExibirMensagem($"Ok, {mascoteTemporario.Name} não foi adotado. Você pode escolher outro.");
                         }
                     }
-                    else
+                    else // Se o pokemonApiDto for nulo, a desserialização falhou
                     {
-                        _view.ExibirMensagem($"Erro: Não foi possível obter detalhes de {escolhaPokemon}.");
+                        _view.ExibirMensagem($"Erro: Não foi possível obter detalhes de {escolhaPokemon}. Verifique o nome ou a conexão.");
                     }
                 }
                 catch (HttpRequestException e)
@@ -199,49 +213,34 @@ namespace MeuJogoMascote.Controllers
         // MÉTODO DE ATUALIZAÇÃO DO STATUS DO MASCOTE (COM DEGRADAÇÃO AJUSTADA)
         private void AtualizarStatusMascote(Mascote mascote)
         {
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG 1: Mascote.UltimaInteracao ANTES do cálculo: {mascote.UltimaInteracao}");
             TimeSpan tempoPassado = DateTime.Now - mascote.UltimaInteracao;
-            // _view.ExibirMensagem($"DEBUG 2: Tempo passado (segundos): {tempoPassado.TotalSeconds}");
 
-            // A cada 60 segundos (1 minuto), as necessidades diminuem 1 ponto
-            // Este valor pode ser ajustado para a dificuldade que você desejar
-            int declinioAlimentacao = (int)(tempoPassado.TotalSeconds / 60); // Ajustado de 10 para 60 segundos
-            int declinioHumor = (int)(tempoPassado.TotalSeconds / 60);      // Ajustado de 10 para 60 segundos
-            int declinioSono = (int)(tempoPassado.TotalSeconds / 60);       // Ajustado de 10 para 60 segundos
+            int declinioAlimentacao = (int)(tempoPassado.TotalSeconds / 60);
+            int declinioHumor = (int)(tempoPassado.TotalSeconds / 60);
+            int declinioSono = (int)(tempoPassado.TotalSeconds / 60);
 
             if (declinioAlimentacao > 0)
             {
                 mascote.Alimentacao = Math.Max(0, mascote.Alimentacao - declinioAlimentacao);
-                // Opcional: _view.ExibirMensagem($"{mascote.Name} está ficando com fome...");
             }
             if (declinioHumor > 0)
             {
                 mascote.Humor = Math.Max(0, mascote.Humor - declinioHumor);
-                // Opcional: _view.ExibirMensagem($"{mascote.Name} está ficando entediado...");
             }
             if (declinioSono > 0)
             {
-                // Se o mascote está dormindo, o sono não diminui.
-                // Poderíamos adicionar lógica para recuperar mais sono dormindo aqui,
-                // mas a degradação é para quando ele está acordado e não interage.
                 if (!mascote.EstaDormindo)
                 {
                     mascote.Sono = Math.Max(0, mascote.Sono - declinioSono);
-                    // Opcional: _view.ExibirMensagem($"{mascote.Name} está ficando com sono...");
                 }
             }
 
-            // Se o mascote estiver muito mal em alguma necessidade, seu humor piora
             if (mascote.Alimentacao <= 2 || mascote.Sono <= 2)
             {
                 mascote.Humor = Math.Max(0, mascote.Humor - 1);
             }
 
-            // Resetar o tempo da última interação para o cálculo futuro
             mascote.UltimaInteracao = DateTime.Now;
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG 3: Mascote.UltimaInteracao DEPOIS da atualização: {mascote.UltimaInteracao}");
         }
 
 
@@ -259,7 +258,6 @@ namespace MeuJogoMascote.Controllers
             int opcaoInteracao = 0;
             while (opcaoInteracao != 5)
             {
-                // NOVIDADE: Atualiza o status do mascote antes de exibir o menu de interação
                 AtualizarStatusMascote(_mascoteAdotado);
                 _view.ExibirStatusMascote(_mascoteAdotado);
 
@@ -308,7 +306,7 @@ namespace MeuJogoMascote.Controllers
                     _view.LimparTela();
                 }
             }
-            await Task.CompletedTask; // Adicionado para resolver o aviso CS1998
+            await Task.CompletedTask;
         }
 
         private void AlimentarMascote(Mascote mascote)
@@ -327,8 +325,6 @@ namespace MeuJogoMascote.Controllers
             mascote.Alimentacao = Math.Min(10, mascote.Alimentacao + 3);
             mascote.Humor = Math.Min(10, mascote.Humor + 1);
             mascote.UltimaInteracao = DateTime.Now;
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG INTERAÇÃO: UltimaInteracao definida por Alimentar: {mascote.UltimaInteracao}");
             _view.ExibirMensagem($"Você alimentou {mascote.Name}. Ele agora está com {mascote.Alimentacao}/10 de alimentação!");
         }
 
@@ -354,8 +350,6 @@ namespace MeuJogoMascote.Controllers
             mascote.Humor = Math.Min(10, mascote.Humor + 2);
             mascote.Sono = Math.Max(0, mascote.Sono - 1);
             mascote.UltimaInteracao = DateTime.Now;
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG INTERAÇÃO: UltimaInteracao definida por Brincar: {mascote.UltimaInteracao}");
             _view.ExibirMensagem($"Você brincou com {mascote.Name}. O humor dele está em {mascote.Humor}/10 e alimentação em {mascote.Alimentacao}/10!");
         }
 
@@ -373,10 +367,8 @@ namespace MeuJogoMascote.Controllers
             }
 
             mascote.EstaDormindo = true;
-            mascote.Sono = Math.Min(10, mascote.Sono + 5); // Aumenta o sono ao dormir
-            mascote.UltimaInteracao = DateTime.Now; // Atualiza a última interação
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG INTERAÇÃO: UltimaInteracao definida por Dormir: {mascote.UltimaInteracao}");
+            mascote.Sono = Math.Min(10, mascote.Sono + 5);
+            mascote.UltimaInteracao = DateTime.Now;
             _view.ExibirMensagem($"Você colocou {mascote.Name} para dormir. Zzzzz...");
             _view.ExibirMensagem($"O sono de {mascote.Name} agora está em {mascote.Sono}/10.");
         }
@@ -390,9 +382,7 @@ namespace MeuJogoMascote.Controllers
             }
 
             mascote.EstaDormindo = false;
-            mascote.UltimaInteracao = DateTime.Now; // Atualiza a última interação
-            // Remover as linhas DEBUG após a depuração
-            // _view.ExibirMensagem($"DEBUG INTERAÇÃO: UltimaInteracao definida por Acordar: {mascote.UltimaInteracao}");
+            mascote.UltimaInteracao = DateTime.Now;
             _view.ExibirMensagem($"{mascote.Name} acordou! Bom dia!");
         }
     }

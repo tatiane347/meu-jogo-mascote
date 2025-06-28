@@ -1,9 +1,10 @@
 // Views/ConsoleHandler.cs
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Linq; // Necessário para o .Any() se for usar em outras partes
 
-using MeuJogoMascote.Models; // Para poder usar as classes Mascote, PokemonListItem etc.
+// Apenas UMA linha para importar o namespace Models é suficiente:
+using MeuJogoMascote.Models; // Para poder usar as classes Mascote, PokemonApiDto, PokemonResult etc.
 
 namespace MeuJogoMascote.Views
 {
@@ -22,17 +23,15 @@ namespace MeuJogoMascote.Views
             Console.Clear();
         }
 
-        // Mantenha esta aqui para o menu principal
         public void ExibirMenuPrincipalOpcoes()
         {
             Console.WriteLine("\n--- MENU PRINCIPAL ---");
             Console.WriteLine("1. Adoção de Mascotes");
-            Console.WriteLine("2. Interagir com Mascote"); // NOVIDADE DO DIA 5: Nova opção
+            Console.WriteLine("2. Interagir com Mascote");
             Console.WriteLine("3. Sair do Jogo");
             Console.Write("Escolha uma opção: ");
         }
 
-        // NOVO MÉTODO PARA EXIBIR O STATUS DO MASCOTE (DIA 5)
         public void ExibirStatusMascote(Mascote mascote)
         {
             Console.WriteLine($"\n--- Status de {mascote.Name.ToUpper()} ---");
@@ -53,7 +52,7 @@ namespace MeuJogoMascote.Views
             Console.Clear();
         }
 
-        public void ExibirListaPokemons(List<PokemonListItem> pokemons)
+        public void ExibirListaPokemons(List<PokemonResult> pokemons)
         {
             Console.WriteLine("\nEspécies Disponíveis para Adoção (primeiros 20):");
             foreach (var pokemon in pokemons)
@@ -66,25 +65,13 @@ namespace MeuJogoMascote.Views
         {
             Console.WriteLine("\n--- DETALHES DO MASCOTE ---");
             Console.WriteLine($"Nome: {mascote.Name}");
-            Console.WriteLine($"Altura: {mascote.Height} decimetros");
-            Console.WriteLine($"Peso: {mascote.Weight} hectogramas");
-            Console.WriteLine($"Experiência Base: {mascote.BaseExperience}");
+            // As propriedades Height, Weight, BaseExperience e Abilities foram removidas
+            // porque não existem mais na classe Mascote, apenas no PokemonApiDto.
+            // Apenas o nome do mascote e suas necessidades (status) são relevantes para o Tamagotchi.
 
-            // NOVIDADE DO DIA 5: Exibir as necessidades iniciais na tela de detalhes
             ExibirStatusMascote(mascote); // Reutiliza o método para mostrar status
 
-            Console.WriteLine("\n--- Habilidades ---");
-            if (mascote.Abilities != null && mascote.Abilities.Any())
-            {
-                foreach (var habilidade in mascote.Abilities)
-                {
-                    Console.WriteLine($"- {habilidade.Ability.Name} (Escondida: {habilidade.IsHidden})");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Nenhuma habilidade encontrada para este mascote.");
-            }
+            // O bloco de Habilidades foi removido.
         }
     }
 }
