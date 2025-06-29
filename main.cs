@@ -20,7 +20,7 @@ namespace MeuJogoMascote // Este é o namespace raiz do seu projeto
             TamagotchiController gameController = new TamagotchiController(consoleView);
 
             // 3. Inicia o jogo através da Controller
-            await gameController.Jogar();
+            await gameController.IniciarJogo(); // <<<< AQUI ESTÁ A ÚNICA MUDANÇA NECESSÁRIA!
         }
     }
 }
